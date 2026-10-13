@@ -46,7 +46,7 @@ def epub_yap(hikayeler: list, yol: Path) -> None:
                    f'<nav epub:type="toc"><ol>{"".join(nav)}</ol></nav></body></html>')
         z.writestr("OEBPS/content.opf", '<?xml version="1.0" encoding="utf-8"?><package xmlns="http://www.idpf.org/2007/opf" '
                    'version="3.0" unique-identifier="id"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/">'
-                   f'<dc:identifier id="id">voxlibris-ornek-omer-seyfettin</dc:identifier><dc:title>{BASLIK}</dc:title>'
+                   f'<dc:identifier id="id">libriopax-ornek-omer-seyfettin</dc:identifier><dc:title>{BASLIK}</dc:title>'
                    f'<dc:creator>{YAZAR}</dc:creator><dc:language>tr</dc:language></metadata><manifest>'
                    '<item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>'
                    f'{"".join(manifest)}</manifest><spine>{"".join(spine)}</spine></package>')

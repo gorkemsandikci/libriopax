@@ -1,25 +1,25 @@
-﻿# VoxLibris sunucusu (Windows): oturum açılışında başlayan görev + (varsa) sadece Tailscale ağına HTTPS yolu.
+﻿# Libriopax sunucusu (Windows): oturum açılışında başlayan görev + (varsa) sadece Tailscale ağına HTTPS yolu.
 #   powershell -NoProfile -ExecutionPolicy Bypass -File kurulum\sunucu_kur.ps1
-# Geri almak:  Unregister-ScheduledTask VoxLibris-Sunucu -Confirm:$false ; tailscale serve --set-path /voxlibris off
+# Geri almak:  Unregister-ScheduledTask Libriopax-Sunucu -Confirm:$false ; tailscale serve --set-path /libriopax off
 # Yönetici gerekmez; internete port açılmaz (sunucu 127.0.0.1'de, dışarıya tek yol tailnet).
 
 $ErrorActionPreference = "Stop"
 $Kok = Split-Path -Parent $PSScriptRoot
 $Pythonw = Join-Path $Kok ".venv\Scripts\pythonw.exe"
 $Port = 8790
-$Yol = "/voxlibris"
+$Yol = "/libriopax"
 if (-not (Test-Path $Pythonw)) { throw "Önce sanal ortam: py -3.12 -m venv .venv ve pip install -r requirements.txt" }
 
 # 1) Zamanlanmış görev (kullanıcı oturumu, gizli pencere, çökerse yeniden başlat)
-$Eylem = New-ScheduledTaskAction -Execute $Pythonw -Argument "-m voxlibris.sunucu" -WorkingDirectory $Kok
+$Eylem = New-ScheduledTaskAction -Execute $Pythonw -Argument "-m libriopax.sunucu" -WorkingDirectory $Kok
 $Tetik = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
 $Ayar = New-ScheduledTaskSettingsSet -ExecutionTimeLimit ([TimeSpan]::Zero) -RestartCount 3 `
     -RestartInterval (New-TimeSpan -Minutes 1) -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -MultipleInstances IgnoreNew
-Register-ScheduledTask -TaskName "VoxLibris-Sunucu" -Action $Eylem -Trigger $Tetik -Settings $Ayar `
-    -Description "VoxLibris sesli kitap sunucusu (127.0.0.1:$Port)" -Force | Out-Null
-Start-ScheduledTask -TaskName "VoxLibris-Sunucu"
+Register-ScheduledTask -TaskName "Libriopax-Sunucu" -Action $Eylem -Trigger $Tetik -Settings $Ayar `
+    -Description "Libriopax sesli kitap sunucusu (127.0.0.1:$Port)" -Force | Out-Null
+Start-ScheduledTask -TaskName "Libriopax-Sunucu"
 
-# 2) Tailscale varsa: https://<makine>.<tailnet>.ts.net/voxlibris -> 127.0.0.1:8790 (diğer serve yollarına dokunmaz)
+# 2) Tailscale varsa: https://<makine>.<tailnet>.ts.net/libriopax -> 127.0.0.1:8790 (diğer serve yollarına dokunmaz)
 $Veri = Join-Path $Kok "veri"
 New-Item -ItemType Directory -Force $Veri | Out-Null
 $Adres = $null

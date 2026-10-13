@@ -1,9 +1,9 @@
 """İndirme sunucusu: üretilen bölüm MP3'lerini telefondan dinlemek/indirmek için (S1 web oynatıcısından önceki ara adım).
 
-    python -m voxlibris.sunucu            # 127.0.0.1:8790; telefona `tailscale serve` ile açılır (kurulum/sunucu_kur.ps1)
+    python -m libriopax.sunucu            # 127.0.0.1:8790; telefona `tailscale serve` ile açılır (kurulum/sunucu_kur.ps1)
 
 Sadece 127.0.0.1'e bağlanır: dışarıdan tek yol Tailscale (sadece tailnet, HTTPS). veri/sunucu.json'da "kullanici"
-varsa Tailscale-User-Login başlığı ona eşit olmayan istek 403 alır. tailscale serve "/voxlibris" önekini sildiği için
+varsa Tailscale-User-Login başlığı ona eşit olmayan istek 403 alır. tailscale serve "/libriopax" önekini sildiği için
 sayfalardaki bütün bağlantılar görelidir.
 """
 import html
@@ -24,11 +24,11 @@ ADRES, PORT = "127.0.0.1", 8790
 _KITAP = re.compile(r"^[0-9a-f]{12}$")
 _VARYANT = re.compile(r"^[a-z]+-[a-z0-9]+$")
 _zip_kilidi = threading.Lock()
-log = logging.getLogger("voxlibris.sunucu")
+log = logging.getLogger("libriopax.sunucu")
 
 
 def ayarlar(veri: Path = VERI) -> dict:
-    """veri/sunucu.json: {"genel_adres": "https://.../voxlibris/", "kullanici": "..."} (kurulum betiği yazar)."""
+    """veri/sunucu.json: {"genel_adres": "https://.../libriopax/", "kullanici": "..."} (kurulum betiği yazar)."""
     try:
         return json.loads((veri / "sunucu.json").read_text(encoding="utf-8"))
     except (OSError, ValueError):
@@ -163,7 +163,7 @@ def _sayfa(baslik: str, govde: str, geri: str = "") -> bytes:
     geri_html = f'<a href="{geri}" aria-label="Geri">‹ Kitaplar</a>' if geri else ""
     return (f'<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" '
             f'content="width=device-width,initial-scale=1"><meta name="theme-color" content="#FFFFFF">'
-            f'<title>{html.escape(baslik)} · VoxLibris</title><style>{STIL}</style></head><body>'
+            f'<title>{html.escape(baslik)} · Libriopax</title><style>{STIL}</style></head><body>'
             f'<div class="ust">{geri_html}<h1>{html.escape(baslik)}</h1></div><main>{govde}</main></body></html>'
             ).encode("utf-8")
 
@@ -193,7 +193,7 @@ def ana_sayfa(liste: list, yerel: bool, ayar: dict) -> bytes:
                         f'{html.escape(k["yazar"] or "")}</div><div class="ikincil">{len(bolumler)} bölüm · '
                         f'{_sure(toplam)}</div></div></a>')
     if not liste:
-        parcalar.append('<div class="bos">Henüz hazır kitap yok.<br>Bilgisayarda: <code>python -m voxlibris.donustur '
+        parcalar.append('<div class="bos">Henüz hazır kitap yok.<br>Bilgisayarda: <code>python -m libriopax.donustur '
                         'kitap.epub --bolum-mp3</code></div>')
     return _sayfa("Kitaplarım", "".join(parcalar))
 
@@ -223,7 +223,7 @@ def kitap_sayfasi(k: dict) -> bytes:
 
 # --- HTTP ---------------------------------------------------------------------------------------------------
 class Isleyici(BaseHTTPRequestHandler):
-    server_version = "VoxLibris"
+    server_version = "Libriopax"
     veri = VERI
 
     def log_message(self, bicim, *arg):
@@ -327,7 +327,7 @@ def sunucu(veri: Path = VERI, adres: str = ADRES, port: int = PORT) -> Threading
 
 def main(argv=None) -> int:
     import argparse
-    ap = argparse.ArgumentParser(prog="python -m voxlibris.sunucu", description="VoxLibris indirme/dinleme sunucusu")
+    ap = argparse.ArgumentParser(prog="python -m libriopax.sunucu", description="Libriopax indirme/dinleme sunucusu")
     ap.add_argument("--adres", default=ADRES, help="varsayılan 127.0.0.1 (dışarıya Tailscale ile); ev ağı: 0.0.0.0")
     ap.add_argument("--port", type=int, default=PORT)
     a = ap.parse_args(argv)
@@ -343,7 +343,7 @@ def main(argv=None) -> int:
     log.info("başladı %s:%s", a.adres, a.port)
     adres = ayarlar().get("genel_adres")
     if sys.stderr:   # pythonw'da stderr yok
-        print(f"VoxLibris sunucusu: http://{a.adres}:{a.port}/" + (f"  ·  telefondan: {adres}" if adres else ""), file=sys.stderr)
+        print(f"Libriopax sunucusu: http://{a.adres}:{a.port}/" + (f"  ·  telefondan: {adres}" if adres else ""), file=sys.stderr)
     try:
         s.serve_forever()
     except KeyboardInterrupt:

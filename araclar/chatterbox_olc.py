@@ -15,7 +15,7 @@ from pathlib import Path
 KOK = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(KOK))
 
-from voxlibris.metin.okunus import okunus  # noqa: E402
+from libriopax.metin.okunus import okunus  # noqa: E402
 
 YEDEK = ("Bir sonbahar sabahı, Ahmet Bey eski konağın kapısını açtı. Bahçedeki çınar ağacının yaprakları sararmış, "
          "rüzgârla birlikte yere dökülüyordu. — Hoş geldiniz, dedi. Selim pencerenin önüne oturdu, çayını yudumladı "

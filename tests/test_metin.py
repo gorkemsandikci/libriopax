@@ -1,8 +1,8 @@
 """Metin katmanı (stdlib): cümle bölme, okunuş, temizlik, sayfalama. Ek paket gerektirmez."""
 import unittest
 
-from voxlibris.metin import bol, okunus, temizle
-from voxlibris.metin.model import Blok, Kitap
+from libriopax.metin import bol, okunus, temizle
+from libriopax.metin.model import Blok, Kitap
 
 
 def cumleler(metin):

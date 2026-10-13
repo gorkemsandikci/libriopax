@@ -16,3 +16,6 @@ ornekler/*.epub
 ornekler/*.pdf
 ornekler/*.html
 *.tmp
+
+# Özel plan ve notlar (yayınlanmaz)
+plan/
