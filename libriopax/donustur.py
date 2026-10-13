@@ -1,9 +1,9 @@
 """Kitabı sayfa sayfa sese çevirir (komut satırı). Yarıda kesilirse tekrar çalıştırınca kaldığı yerden devam eder.
 
-    python -m voxlibris.donustur kitap.epub                    # tüm kitap, Piper dfki sesi
-    python -m voxlibris.donustur kitap.pdf --sayfalar 1-10 --ses fettah
-    python -m voxlibris.donustur kitap.pdf --sadece-metin       # ses üretmeden sayfalara bölünmüş metni hazırla
-    python -m voxlibris.donustur kitap.epub --bolum-mp3        # bitince bölüm başına tek MP3 + kitap.m3u
+    python -m libriopax.donustur kitap.epub                    # tüm kitap, Piper dfki sesi
+    python -m libriopax.donustur kitap.pdf --sayfalar 1-10 --ses fettah
+    python -m libriopax.donustur kitap.pdf --sadece-metin       # ses üretmeden sayfalara bölünmüş metni hazırla
+    python -m libriopax.donustur kitap.epub --bolum-mp3        # bitince bölüm başına tek MP3 + kitap.m3u
 
 Çıktı: veri/kitaplar/<kimlik>/kitap.json (sayfalar, cümleler) ve ses/<motor>-<ses>/0001.mp3 + 0001.json (süre, cümle
 zamanları). --json ile son satırda makinece okunabilir özet (otomasyon için).
@@ -177,7 +177,7 @@ def indirme_linki(ozet: dict, veri: Path) -> None:
 
 
 def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(prog="python -m voxlibris.donustur", description="EPUB/PDF'i yerel sesle sese çevirir.")
+    ap = argparse.ArgumentParser(prog="python -m libriopax.donustur", description="EPUB/PDF'i yerel sesle sese çevirir.")
     ap.add_argument("kitap", type=Path)
     ap.add_argument("--ses", default="dfki", help="Piper sesi: dfki, fahrettin, fettah")
     ap.add_argument("--hiz", type=float, default=1.0, help="konuşma hızı (sentezde; oynatıcıda ayrıca değişir)")

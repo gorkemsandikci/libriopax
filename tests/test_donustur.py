@@ -7,9 +7,9 @@ import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 
-from voxlibris import donustur
-from voxlibris.ses import uretici
-from voxlibris.ses.motor import SahteMotor
+from libriopax import donustur
+from libriopax.ses import uretici
+from libriopax.ses.motor import SahteMotor
 from tests.test_epub import epub_yap
 
 KOK = Path(__file__).resolve().parent.parent
@@ -78,7 +78,7 @@ class Donustur(unittest.TestCase):
                      "pypdfium2 ya da örnek PDF yok (araclar/ornek_kitap.py)")
 class OrnekPdf(unittest.TestCase):
     def test_gercek_boyutlu_kitap(self):
-        from voxlibris.metin import bol, pdf
+        from libriopax.metin import bol, pdf
         k = pdf.oku(KOK / "ornekler" / "omer-seyfettin.pdf")
         sayfalar = bol.sayfala(k)
         self.assertEqual(len(k.bolumler), 72)                 # kitap adı + 71 hikâye (yer imlerinden)

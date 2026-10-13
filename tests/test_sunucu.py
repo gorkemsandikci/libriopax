@@ -11,8 +11,8 @@ import zipfile
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 
-from voxlibris import donustur, sunucu
-from voxlibris.ses import uretici
+from libriopax import donustur, sunucu
+from libriopax.ses import uretici
 from tests.test_epub import epub_yap
 
 
@@ -27,7 +27,7 @@ class Sunucu(unittest.TestCase):
         with redirect_stdout(io.StringIO()) as cikti, redirect_stderr(io.StringIO()) as cls.hata:
             donustur.main([str(kitap), "--motor", "sahte", "--veri", str(cls.veri), "--json"])
         cls.ozet = json.loads(cikti.getvalue().strip().splitlines()[-1])
-        (cls.veri / "sunucu.json").write_text(json.dumps({"genel_adres": "https://pc.ts.net/voxlibris/",
+        (cls.veri / "sunucu.json").write_text(json.dumps({"genel_adres": "https://pc.ts.net/libriopax/",
                                                           "kullanici": "sahip@ornek.com"}), encoding="utf-8")
         cls.s = sunucu.sunucu(cls.veri, port=0)
         cls.taban = f"http://127.0.0.1:{cls.s.server_address[1]}/"
@@ -49,7 +49,7 @@ class Sunucu(unittest.TestCase):
         metin = govde.decode()
         self.assertEqual(kod, 200)
         self.assertIn("Deneme Kitabı", metin)
-        self.assertIn(f'href="k/{self.ozet["kimlik"]}/"', metin)      # görece bağlantı (tailscale /voxlibris öneki)
+        self.assertIn(f'href="k/{self.ozet["kimlik"]}/"', metin)      # görece bağlantı (tailscale /libriopax öneki)
         self.assertNotIn("Telefonla tara", metin)                       # QR sadece bilgisayardan açınca
         self.assertIn("Telefonla tara", self._al("")[2].decode())
         _, _, govde = self._al(f"k/{self.ozet['kimlik']}/")
@@ -87,7 +87,7 @@ class Sunucu(unittest.TestCase):
 
     def test_donustur_linki_yazar(self):
         self.assertEqual(sunucu.kitap_linki(self.ozet["kimlik"], self.veri),
-                         f"https://pc.ts.net/voxlibris/k/{self.ozet['kimlik']}/")
+                         f"https://pc.ts.net/libriopax/k/{self.ozet['kimlik']}/")
 
 
 if __name__ == "__main__":
