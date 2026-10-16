@@ -1,6 +1,6 @@
 """Kitabı sayfa sayfa sese çevirir (komut satırı). Yarıda kesilirse tekrar çalıştırınca kaldığı yerden devam eder.
 
-    python -m libriopax.donustur kitap.epub                    # tüm kitap, Piper dfki sesi
+    python -m libriopax.donustur kitap.epub                    # tüm kitap, Piper fahrettin sesi, hız 0.8
     python -m libriopax.donustur kitap.pdf --sayfalar 1-10 --ses fettah
     python -m libriopax.donustur kitap.pdf --sadece-metin       # ses üretmeden sayfalara bölünmüş metni hazırla
     python -m libriopax.donustur kitap.epub --bolum-mp3        # bitince bölüm başına tek MP3 + kitap.m3u
@@ -179,8 +179,8 @@ def indirme_linki(ozet: dict, veri: Path) -> None:
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(prog="python -m libriopax.donustur", description="EPUB/PDF'i yerel sesle sese çevirir.")
     ap.add_argument("kitap", type=Path)
-    ap.add_argument("--ses", default="dfki", help="Piper sesi: dfki, fahrettin, fettah")
-    ap.add_argument("--hiz", type=float, default=1.0, help="konuşma hızı (sentezde; oynatıcıda ayrıca değişir)")
+    ap.add_argument("--ses", default="fahrettin", help="Piper sesi: fahrettin, fettah, dfki")
+    ap.add_argument("--hiz", type=float, default=0.8, help="konuşma hızı, 1 = modelin doğal hızı (sentezde; oynatıcıda ayrıca değişir)")
     ap.add_argument("--motor", default="piper", choices=["piper", "sahte"])
     ap.add_argument("--veri", type=Path, default=KOK / "veri")
     ap.add_argument("--sayfalar", default="", help="ör. 1-20,35")

@@ -16,7 +16,7 @@ class PiperMotor:
     """Yerel Piper (CPU). Türkçe sesler: dfki (CC BY-NC-SA, ticari değil), fahrettin ve fettah (CC0)."""
     ad = "piper"
 
-    def __init__(self, ses: str = "dfki", hiz: float = 1.0):
+    def __init__(self, ses: str = "fahrettin", hiz: float = 0.8):
         from piper import PiperVoice
         from piper.config import SynthesisConfig
         yol = PIPER_DIZINI / f"tr_TR-{ses}-medium.onnx"

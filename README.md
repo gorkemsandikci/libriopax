@@ -75,13 +75,13 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 
 | Ses | Cinsiyet | Lisans |
 |---|---|---|
-| `dfki` (varsayılan) | erkek | CC BY-NC-SA 4.0 — **ticari olmayan kullanım** |
-| `fahrettin` | erkek | CC0 |
+| `dfki` | erkek | CC BY-NC-SA 4.0 — **ticari olmayan kullanım** |
+| `fahrettin` (varsayılan) | erkek | CC0 |
 | `fettah` | erkek | CC0 |
 
 Sesler `araclar/sesleri_indir.py` ile [rhasspy/piper-voices](https://huggingface.co/rhasspy/piper-voices)'tan
 indirilir ve repoya dahil değildir. `fahrettin` ve `fettah` resmi listeden kalktığı için eski bir sürümden alınır.
-`--hiz 1.2` konuşmayı hızlandırır.
+Varsayılan hız 0.8 (biraz yavaş, dinlemesi rahat); `--hiz 1` modelin doğal hızı, `--hiz 1.2` daha hızlı.
 
 ## Telefondan dinleme ve indirme
 
