@@ -24,6 +24,7 @@ def main(argv=None) -> int:
     ap.add_argument("--hiz", type=float, default=0.8)
     ap.add_argument("--motor", default="piper", choices=["piper", "sahte"])
     ap.add_argument("--gemini-yok", action="store_true", help="Gemini adımlarını atla")
+    ap.add_argument("--kota", type=Path, help="kota durum dosyası (varsayılan <veri>/aof/kota.json; anahtar başına ayrı)")
     ap.add_argument("--json", action="store_true", help="son satırda JSON özet")
     a = ap.parse_args(argv)
     for akim in (sys.stdout, sys.stderr):
@@ -39,7 +40,7 @@ def main(argv=None) -> int:
 
     aof = a.veri / "aof"
     (aof / "gelen").mkdir(parents=True, exist_ok=True)
-    ozet = anlat.calistir(aof, Istemci(aof / "kota.json"), motor_yap, gemini_acik=not a.gemini_yok)
+    ozet = anlat.calistir(aof, Istemci(a.kota or aof / "kota.json"), motor_yap, gemini_acik=not a.gemini_yok)
     for d in ozet["yeni"]:
         print(f"+ yeni ünite: {d}")
     for r in ozet["red"]:

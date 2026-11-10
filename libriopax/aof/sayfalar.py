@@ -9,9 +9,10 @@ UNITE = re.compile(r"^\d{2}$")
 SES = ("anlatim", "ozet")
 
 STIL = """
-.sekmeler{display:flex;gap:6px;margin:0 0 14px;padding:4px;border-radius:999px;background:var(--krem);border:1px solid var(--bej)}
-.sekmeler a,.sekmeler button{flex:1;min-height:40px;display:grid;place-items:center;border-radius:999px;border:0;background:none;
-font:inherit;font-weight:600;font-size:15px;color:var(--yazi-2);text-decoration:none;cursor:pointer;padding:0 8px}
+.sekmeler{display:flex;gap:6px;margin:0 0 14px;padding:4px;border-radius:999px;background:var(--krem);border:1px solid var(--bej);
+overflow-x:auto;scrollbar-width:none}.sekmeler::-webkit-scrollbar{display:none}
+.sekmeler a,.sekmeler button{flex:1 0 auto;min-height:40px;display:grid;place-items:center;border-radius:999px;border:0;background:none;
+font:inherit;font-weight:600;font-size:15px;color:var(--yazi-2);text-decoration:none;cursor:pointer;padding:0 12px;white-space:nowrap}
 .sekmeler [aria-current],.sekmeler [aria-selected=true]{background:var(--zemin);color:var(--vurgu-yazi);box-shadow:var(--golge)}
 .unite{display:flex;gap:12px;align-items:center;padding:12px 0;border-top:1px solid var(--bej);color:inherit;text-decoration:none}
 .unite:first-of-type{border-top:0}.unite>div{flex:1;min-width:0}
@@ -115,8 +116,8 @@ def liste(aof: Path) -> str:
         parcalar.append(f'<div class="kart"><div class="baslik">{_e(d["ad"])}</div><div class="ikincil">{_e(d["kod"])} · '
                         f'{len(d["uniteler"])} ünite</div>{"".join(satirlar)}</div>')
     if not parcalar:
-        parcalar.append('<div class="bos">Henüz ünite yok.<br>Ünite PDF\'lerini bilgisayarda <code>veri/aof/gelen/</code> '
-                        'klasörüne koy; her saat işlenir.</div>')
+        parcalar.append('<div class="bos">Henüz ünite yok.<br><a class="dugme" href="../yukle/" style="margin-top:14px">'
+                        '📤 Ünite PDF\'i yükle</a></div>')
     return "".join(parcalar)
 
 
