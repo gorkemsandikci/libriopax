@@ -75,13 +75,13 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 
 | Ses | Cinsiyet | Lisans |
 |---|---|---|
-| `dfki` (varsayılan) | erkek | CC BY-NC-SA 4.0 — **ticari olmayan kullanım** |
-| `fahrettin` | erkek | CC0 |
+| `dfki` | erkek | CC BY-NC-SA 4.0 — **ticari olmayan kullanım** |
+| `fahrettin` (varsayılan) | erkek | CC0 |
 | `fettah` | erkek | CC0 |
 
 Sesler `araclar/sesleri_indir.py` ile [rhasspy/piper-voices](https://huggingface.co/rhasspy/piper-voices)'tan
 indirilir ve repoya dahil değildir. `fahrettin` ve `fettah` resmi listeden kalktığı için eski bir sürümden alınır.
-`--hiz 1.2` konuşmayı hızlandırır.
+Varsayılan hız 0.8 (biraz yavaş, dinlemesi rahat); `--hiz 1` modelin doğal hızı, `--hiz 1.2` daha hızlı.
 
 ## Telefondan dinleme ve indirme
 
@@ -106,6 +106,30 @@ macOS/Linux'ta: `.venv/bin/python -m libriopax.sunucu &` ve `tailscale serve --b
 `http://<bilgisayarın-yerel-ip'si>:8790/`. ⚠️ Bu modda parola yoktur; aynı Wi-Fi'daki herkes kitaplığı görebilir.
 Linkin dönüştürmeden sonra yazılması için `veri/sunucu.json` dosyasına
 `{"genel_adres": "http://192.168.1.10:8790/"}` yaz (kendi IP adresinle).
+
+## AÖF sekmesi (ders anlatımı)
+
+Anadolu Üniversitesi Açıköğretim ünite PDF'lerini dinlenebilir ve çalışılabilir bir derse çevirir. Kitap modundan
+farklı olarak metni olduğu gibi okumaz: her ana başlığı bir model kitaba sadık bir hoca anlatımına çevirir.
+
+```powershell
+$env:GEMINI_API_KEY = "<Google AI Studio anahtarı>"     # ücretsiz katman yeterli
+.venv\Scripts\python -m libriopax.aof                   # veri\aof\gelen\*.pdf → veri\aof\dersler\<DERS>\<NN>\
+.venv\Scripts\python -m libriopax.aof --gemini-yok      # sadece ayrıştırma + kitabın özetinin sesi
+```
+
+- **Ayrıştırma kurallı koddur:** amaçlar, anahtar kavramlar, ana başlıklar, kitabın özeti, "Kendimizi Sınayalım"
+  soruları ve yanıt anahtarı, "Sıra Sizde" yanıtları ve okuma parçası PDF'ten çıkarılır, model bunlara dokunmaz.
+- **Anlatım (Gemini):** her ana başlık (uzunsa alt başlıklardan parçalanarak) kitapta olmayan bilgi eklemeden anlatılır;
+  her bölümün sonunda "Sınavda dikkat" noktaları. Ünite için kavram listesi ve "Deneme" etiketli 10 yeni soru.
+- **Ses (Piper):** anlatımın tamamı ve kitabın özeti ayrı MP3; çalarda bölümlere atlama ve hız düğmeleri.
+- **Kota:** istekler arası en az 15 sn; yoğun (503) model 30 dk atlanır, yedek modele geçilir. Günlük kota dolunca iş
+  durur, sonraki koşu kaldığı yerden sürer (`veri\aof\kota.json`). Model: `GEMINI_MODEL`, yedekler `GEMINI_YEDEK_MODELLER`.
+- Sunucuda üstte **📚 Kitaplarım | 🎓 AÖF** sekmeleri; ünite sayfasında Anlatım, Özet, Kavramlar ve Test (şıkka dokununca
+  doğru/yanlış ve açıklama).
+
+⚠️ Bu sekmede ünite metni Google'ın Gemini API'sine gönderilir; kitap modunun "metin bilgisayardan çıkmaz" ilkesi burada
+geçerli değildir.
 
 ## Nasıl çalışır
 
