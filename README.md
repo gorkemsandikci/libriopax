@@ -107,6 +107,30 @@ macOS/Linux'ta: `.venv/bin/python -m libriopax.sunucu &` ve `tailscale serve --b
 Linkin dönüştürmeden sonra yazılması için `veri/sunucu.json` dosyasına
 `{"genel_adres": "http://192.168.1.10:8790/"}` yaz (kendi IP adresinle).
 
+## AÖF sekmesi (ders anlatımı)
+
+Anadolu Üniversitesi Açıköğretim ünite PDF'lerini dinlenebilir ve çalışılabilir bir derse çevirir. Kitap modundan
+farklı olarak metni olduğu gibi okumaz: her ana başlığı bir model kitaba sadık bir hoca anlatımına çevirir.
+
+```powershell
+$env:GEMINI_API_KEY = "<Google AI Studio anahtarı>"     # ücretsiz katman yeterli
+.venv\Scripts\python -m libriopax.aof                   # veri\aof\gelen\*.pdf → veri\aof\dersler\<DERS>\<NN>\
+.venv\Scripts\python -m libriopax.aof --gemini-yok      # sadece ayrıştırma + kitabın özetinin sesi
+```
+
+- **Ayrıştırma kurallı koddur:** amaçlar, anahtar kavramlar, ana başlıklar, kitabın özeti, "Kendimizi Sınayalım"
+  soruları ve yanıt anahtarı, "Sıra Sizde" yanıtları ve okuma parçası PDF'ten çıkarılır, model bunlara dokunmaz.
+- **Anlatım (Gemini):** her ana başlık (uzunsa alt başlıklardan parçalanarak) kitapta olmayan bilgi eklemeden anlatılır;
+  her bölümün sonunda "Sınavda dikkat" noktaları. Ünite için kavram listesi ve "Deneme" etiketli 10 yeni soru.
+- **Ses (Piper):** anlatımın tamamı ve kitabın özeti ayrı MP3; çalarda bölümlere atlama ve hız düğmeleri.
+- **Kota:** istekler arası en az 15 sn; yoğun (503) model 30 dk atlanır, yedek modele geçilir. Günlük kota dolunca iş
+  durur, sonraki koşu kaldığı yerden sürer (`veri\aof\kota.json`). Model: `GEMINI_MODEL`, yedekler `GEMINI_YEDEK_MODELLER`.
+- Sunucuda üstte **📚 Kitaplarım | 🎓 AÖF** sekmeleri; ünite sayfasında Anlatım, Özet, Kavramlar ve Test (şıkka dokununca
+  doğru/yanlış ve açıklama).
+
+⚠️ Bu sekmede ünite metni Google'ın Gemini API'sine gönderilir; kitap modunun "metin bilgisayardan çıkmaz" ilkesi burada
+geçerli değildir.
+
 ## Nasıl çalışır
 
 ```

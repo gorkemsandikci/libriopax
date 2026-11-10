@@ -18,6 +18,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import quote, urlsplit, parse_qs
 
+from .aof import sayfalar as aof_sayfa
+
 KOK = Path(__file__).resolve().parent.parent
 VERI = KOK / "veri"
 ADRES, PORT = "127.0.0.1", 8790
@@ -156,11 +158,19 @@ audio{width:100%;margin-top:8px}
 .qr{display:flex;gap:16px;align-items:center}.qr svg{width:132px;height:132px;flex:none}.qr>div{min-width:0;overflow-wrap:anywhere}
 .bos{text-align:center;color:var(--yazi-2);padding:40px 16px}
 @media (prefers-reduced-transparency:reduce){.ust,.kart{background:var(--zemin-sicak);backdrop-filter:none}}
-"""
+""" + aof_sayfa.STIL
 
 
-def _sayfa(baslik: str, govde: str, geri: str = "") -> bytes:
-    geri_html = f'<a href="{geri}" aria-label="Geri">‹ Kitaplar</a>' if geri else ""
+def _sekmeler(etkin: str, kok: str) -> str:
+    """Üst sekmeler (Kitaplarım | AÖF); kok: bu sayfadan köke göreli yol ("" ya da "../")."""
+    secili = ' aria-current="page"'
+    return '<nav class="sekmeler" aria-label="Bölümler">' + "".join(
+        f'<a href="{yol}"{secili if ad == etkin else ""}>{yazi}</a>'
+        for ad, yol, yazi in (("kitaplar", kok or "./", "📚 Kitaplarım"), ("aof", kok + "aof/", "🎓 AÖF"))) + "</nav>"
+
+
+def _sayfa(baslik: str, govde: str, geri: str = "", geri_yazi: str = "Kitaplar") -> bytes:
+    geri_html = f'<a href="{geri}" aria-label="Geri">‹ {html.escape(geri_yazi)}</a>' if geri else ""
     return (f'<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" '
             f'content="width=device-width,initial-scale=1"><meta name="theme-color" content="#FFFFFF">'
             f'<title>{html.escape(baslik)} · Libriopax</title><style>{STIL}</style></head><body>'
@@ -195,7 +205,15 @@ def ana_sayfa(liste: list, yerel: bool, ayar: dict) -> bytes:
     if not liste:
         parcalar.append('<div class="bos">Henüz hazır kitap yok.<br>Bilgisayarda: <code>python -m libriopax.donustur '
                         'kitap.epub --bolum-mp3</code></div>')
-    return _sayfa("Kitaplarım", "".join(parcalar))
+    return _sayfa("Kitaplarım", _sekmeler("kitaplar", "") + "".join(parcalar))
+
+
+def aof_liste_sayfasi(veri: Path) -> bytes:
+    return _sayfa("AÖF", _sekmeler("aof", "../") + aof_sayfa.liste(veri / "aof"))
+
+
+def aof_unite_sayfasi(x: dict) -> bytes:
+    return _sayfa(f'{int(x["no"])}. Ünite', aof_sayfa.unite(x), geri="../../", geri_yazi="AÖF")
 
 
 def kitap_sayfasi(k: dict) -> bytes:
@@ -278,6 +296,32 @@ class Isleyici(BaseHTTPRequestHandler):
                     return                                   # telefon indirmeyi bıraktı / ileri sardı
                 kalan -= len(parca)
 
+    def _aof(self, url, yol: list, indir: bool):
+        aof = self.veri / "aof"
+        if not yol:
+            if not url.path.endswith("/"):
+                return self._gonder(301, basliklar={"Location": "aof/"})
+            return self._gonder(200, aof_liste_sayfasi(self.veri), "text/html; charset=utf-8")
+        if len(yol) < 2 or not (aof_sayfa.DERS.match(yol[0]) and aof_sayfa.UNITE.match(yol[1])):
+            return self._gonder(404, "Bulunamadı.".encode())
+        dizin = aof / "dersler" / yol[0] / yol[1]
+        if len(yol) == 2:
+            x = aof_sayfa.unite_oku(dizin)
+            if x is None:
+                return self._gonder(404, "Ünite bulunamadı.".encode())
+            if not url.path.endswith("/"):
+                return self._gonder(301, basliklar={"Location": f"{yol[1]}/"})
+            return self._gonder(200, aof_unite_sayfasi(x), "text/html; charset=utf-8")
+        if len(yol) == 3:
+            if yol[2] == "kaynak.pdf" and (dizin / "kaynak.pdf").is_file():
+                ad = (aof_sayfa._oku(dizin / "unite.json") or {}).get("kaynak_dosya") or "unite.pdf"
+                return self._dosya(dizin / "kaynak.pdf", "application/pdf", ad if indir else None)
+            m = re.match(r"^([a-z]+)\.mp3$", yol[2])
+            ses = aof_sayfa.ses_dosyasi(aof, yol[0], yol[1], m.group(1)) if m else None
+            if ses:
+                return self._dosya(ses, "audio/mpeg", f"{yol[0]}-{yol[1]}-{m.group(1)}.mp3" if indir else None)
+        return self._gonder(404, "Bulunamadı.".encode())
+
     def do_HEAD(self):
         self.do_GET()
 
@@ -294,6 +338,8 @@ class Isleyici(BaseHTTPRequestHandler):
                 return self._gonder(200, ana_sayfa(kitaplar(self.veri), yerel=not giris, ayar=ayar), "text/html; charset=utf-8")
             if parcalar == ["saglik"]:
                 return self._gonder(200, b"ok")
+            if parcalar[0] == "aof":
+                return self._aof(url, parcalar[1:], indir)
             if parcalar[0] != "k" or len(parcalar) < 2 or not _KITAP.match(parcalar[1]):
                 return self._gonder(404, "Bulunamadı.".encode())
             k = next((x for x in kitaplar(self.veri) if x["kimlik"] == parcalar[1]), None)
