@@ -107,6 +107,26 @@ macOS/Linux'ta: `.venv/bin/python -m libriopax.sunucu &` ve `tailscale serve --b
 Linkin dönüştürmeden sonra yazılması için `veri/sunucu.json` dosyasına
 `{"genel_adres": "http://192.168.1.10:8790/"}` yaz (kendi IP adresinle).
 
+## Web arayüzü: yükleme, kullanıcılar, onay
+
+Sunucu (`python -m libriopax.sunucu`) tarayıcıdan yükleme alır ve tek işçiyle sırayla işler:
+**📚 Kitaplar | 🎓 AÖF | 📤 Yükle | ⚙️ Ayarlar | 🛡️ Yönetim** (yönetim sadece sahibe).
+
+- **Kullanıcılar:** kimlik e-postadır (şimdilik Tailscale-User-Login; başlıksız yerel istek = sahip). Sahip
+  (`veri/sunucu.json` "kullanici") yöneticidir. Tanınmayan e-posta "onay bekliyor" olarak kaydolur; yönetici onaylayana
+  kadar hiçbir şey göremez. Herkesin kitaplığı ayrı: `veri/kullanicilar/<kid>/`.
+- **İşler:** yükleme → onay (yönetici; sahip ve "otomatik onaylı" kullanıcılar atlar) → sıra → işleniyor (ilerleme
+  yüzdesi) → hazır. Yarıda kalan iş sunucu açılınca kaldığı yerden sürer. Sınırlar: 300 MB, aynı anda 5 bekleyen iş,
+  paylaşılan Gemini anahtarıyla günde N AÖF ünitesi (kullanıcı başına, yönetim sayfasından).
+- **Ses motorları:** kullanıcı başına izin (Piper; Chatterbox ve Gemini TTS "yakında").
+- **Gemini anahtarı:** paylaşılan anahtar `python -m libriopax.yonetim gemini-anahtar` (stdin ya da `--env <.env>`);
+  kullanıcı kendi anahtarını Ayarlar'dan ekleyebilir. Anahtarlar Windows DPAPI ile şifreli saklanır
+  (`veri/gizli/`), hiçbir sayfada ya da kayıtta görünmez.
+- **Onay komutları:** `python -m libriopax.yonetim durum|is-onayla|is-reddet|kullanici-onayla|kullanici-reddet`
+  (G-Maestro'nun Telegram düğmeleri bunları çağırır).
+- Eski klasör akışı sürüyor: sahibin `veri/gelen/` ve `veri/aof/gelen/` klasörüne konan dosyalar onaysız işe çevrilir.
+- Yazma istekleri `X-Libriopax: 1` başlığı ister ve başka siteden gelen istekleri reddeder.
+
 ## AÖF sekmesi (ders anlatımı)
 
 Anadolu Üniversitesi Açıköğretim ünite PDF'lerini dinlenebilir ve çalışılabilir bir derse çevirir. Kitap modundan

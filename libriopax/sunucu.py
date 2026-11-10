@@ -18,6 +18,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import quote, urlsplit, parse_qs
 
+from . import arayuz, gizli, hesap, isler
 from .aof import sayfalar as aof_sayfa
 
 KOK = Path(__file__).resolve().parent.parent
@@ -158,15 +159,18 @@ audio{width:100%;margin-top:8px}
 .qr{display:flex;gap:16px;align-items:center}.qr svg{width:132px;height:132px;flex:none}.qr>div{min-width:0;overflow-wrap:anywhere}
 .bos{text-align:center;color:var(--yazi-2);padding:40px 16px}
 @media (prefers-reduced-transparency:reduce){.ust,.kart{background:var(--zemin-sicak);backdrop-filter:none}}
-""" + aof_sayfa.STIL
+""" + aof_sayfa.STIL + arayuz.STIL
 
 
-def _sekmeler(etkin: str, kok: str) -> str:
-    """Üst sekmeler (Kitaplarım | AÖF); kok: bu sayfadan köke göreli yol ("" ya da "../")."""
+def _sekmeler(etkin: str, kok: str, yonetici: bool = False) -> str:
+    """Üst sekmeler; kok: bu sayfadan köke göreli yol ("" ya da "../")."""
     secili = ' aria-current="page"'
+    sekmeler = [("kitaplar", kok or "./", "📚 Kitaplar"), ("aof", kok + "aof/", "🎓 AÖF"),
+                ("yukle", kok + "yukle/", "📤 Yükle"), ("ayarlar", kok + "ayarlar/", '<span aria-label="Ayarlar">⚙️</span>')]
+    if yonetici:
+        sekmeler.append(("yonetim", kok + "yonetim/", '<span aria-label="Yönetim">🛡️</span>'))
     return '<nav class="sekmeler" aria-label="Bölümler">' + "".join(
-        f'<a href="{yol}"{secili if ad == etkin else ""}>{yazi}</a>'
-        for ad, yol, yazi in (("kitaplar", kok or "./", "📚 Kitaplarım"), ("aof", kok + "aof/", "🎓 AÖF"))) + "</nav>"
+        f'<a href="{yol}"{secili if ad == etkin else ""}>{yazi}</a>' for ad, yol, yazi in sekmeler) + "</nav>"
 
 
 def _sayfa(baslik: str, govde: str, geri: str = "", geri_yazi: str = "Kitaplar") -> bytes:
@@ -188,7 +192,7 @@ def _qr_svg(metin: str) -> str:
     return img.to_string(encoding="unicode")
 
 
-def ana_sayfa(liste: list, yerel: bool, ayar: dict) -> bytes:
+def ana_sayfa(liste: list, yerel: bool, ayar: dict, yonetici: bool = False) -> bytes:
     parcalar = []
     if yerel and ayar.get("genel_adres"):
         parcalar.append(f'<div class="kart qr">{_qr_svg(ayar["genel_adres"])}<div><div class="baslik">Telefonla tara</div>'
@@ -203,13 +207,13 @@ def ana_sayfa(liste: list, yerel: bool, ayar: dict) -> bytes:
                         f'{html.escape(k["yazar"] or "")}</div><div class="ikincil">{len(bolumler)} bölüm · '
                         f'{_sure(toplam)}</div></div></a>')
     if not liste:
-        parcalar.append('<div class="bos">Henüz hazır kitap yok.<br>Bilgisayarda: <code>python -m libriopax.donustur '
-                        'kitap.epub --bolum-mp3</code></div>')
-    return _sayfa("Kitaplarım", _sekmeler("kitaplar", "") + "".join(parcalar))
+        parcalar.append('<div class="bos">Henüz hazır kitap yok.<br><a class="dugme" href="yukle/" '
+                        'style="margin-top:14px">📤 Kitap yükle</a></div>')
+    return _sayfa("Kitaplarım", _sekmeler("kitaplar", "", yonetici) + "".join(parcalar))
 
 
-def aof_liste_sayfasi(veri: Path) -> bytes:
-    return _sayfa("AÖF", _sekmeler("aof", "../") + aof_sayfa.liste(veri / "aof"))
+def aof_liste_sayfasi(veri: Path, yonetici: bool = False) -> bytes:
+    return _sayfa("AÖF", _sekmeler("aof", "../", yonetici) + aof_sayfa.liste(veri / "aof"))
 
 
 def aof_unite_sayfasi(x: dict) -> bytes:
@@ -243,6 +247,9 @@ def kitap_sayfasi(k: dict) -> bytes:
 class Isleyici(BaseHTTPRequestHandler):
     server_version = "Libriopax"
     veri = VERI
+    isci = None
+    kok = None          # istek sahibinin veri kökü (veri/kullanicilar/<kid>)
+    yonetici = False
 
     def log_message(self, bicim, *arg):
         log.info("%s %s", self.address_string(), bicim % arg)
@@ -297,11 +304,11 @@ class Isleyici(BaseHTTPRequestHandler):
                 kalan -= len(parca)
 
     def _aof(self, url, yol: list, indir: bool):
-        aof = self.veri / "aof"
+        aof = self.kok / "aof"
         if not yol:
             if not url.path.endswith("/"):
                 return self._gonder(301, basliklar={"Location": "aof/"})
-            return self._gonder(200, aof_liste_sayfasi(self.veri), "text/html; charset=utf-8")
+            return self._gonder(200, aof_liste_sayfasi(self.kok, self.yonetici), "text/html; charset=utf-8")
         if len(yol) < 2 or not (aof_sayfa.DERS.match(yol[0]) and aof_sayfa.UNITE.match(yol[1])):
             return self._gonder(404, "Bulunamadı.".encode())
         dizin = aof / "dersler" / yol[0] / yol[1]
@@ -325,24 +332,57 @@ class Isleyici(BaseHTTPRequestHandler):
     def do_HEAD(self):
         self.do_GET()
 
-    def do_GET(self):
-        ayar = ayarlar(self.veri)
+    # --- kimlik --------------------------------------------------------------------------------------------
+    def _kim(self) -> tuple:
+        """(e-posta, kayıt). Tailscale arkasında kimlik Tailscale-User-Login; başlıksız istek bilgisayarın kendisinden
+        (127.0.0.1) gelir ve sahip sayılır. Bilinmeyen e-posta "bekliyor" olarak kaydolur."""
         giris = (self.headers.get("Tailscale-User-Login") or "").strip().lower()
-        if ayar.get("kullanici") and giris and giris != ayar["kullanici"].lower():
-            return self._gonder(403, "Bu kitaplık başka bir hesaba ait.".encode())
+        eposta = giris or hesap.yerel_kullanici(self.veri)
+        kayit = hesap.bul(self.veri, eposta)
+        if kayit is None and giris:
+            try:
+                kayit = hesap.basvur(self.veri, eposta)
+                log.info("yeni erişim isteği: %s", eposta)
+            except hesap.HesapHatasi:
+                kayit = None
+        return eposta, kayit
+
+    def _html(self, govde: bytes):
+        return self._gonder(200, govde, "text/html; charset=utf-8",
+                            {"Cache-Control": "no-store", "X-Frame-Options": "DENY", "Referrer-Policy": "same-origin"})
+
+    def _json(self, kod: int, veri: dict):
+        return self._gonder(kod, json.dumps(veri, ensure_ascii=False).encode("utf-8"), "application/json; charset=utf-8",
+                            {"Cache-Control": "no-store"})
+
+    def do_GET(self):
         url = urlsplit(self.path)
         parcalar = [p for p in url.path.split("/") if p]
         indir = "indir" in parse_qs(url.query)
         try:
-            if not parcalar:
-                return self._gonder(200, ana_sayfa(kitaplar(self.veri), yerel=not giris, ayar=ayar), "text/html; charset=utf-8")
             if parcalar == ["saglik"]:
                 return self._gonder(200, b"ok")
+            eposta, kayit = self._kim()
+            if not hesap.onayli_mi(kayit):
+                return self._gonder(403, _sayfa("Libriopax", arayuz.bekliyor(eposta, (kayit or {}).get("durum", ""))),
+                                    "text/html; charset=utf-8")
+            self.eposta, self.kayit = eposta, kayit
+            self.kok = hesap.kok(self.veri, eposta)
+            self.yonetici = bool(kayit.get("yonetici"))
+            if not parcalar:
+                yerel = not self.headers.get("Tailscale-User-Login")
+                return self._html(ana_sayfa(kitaplar(self.kok), yerel=yerel, ayar=ayarlar(self.veri), yonetici=self.yonetici))
             if parcalar[0] == "aof":
                 return self._aof(url, parcalar[1:], indir)
+            if parcalar[0] in ("yukle", "ayarlar", "yonetim") and len(parcalar) == 1:
+                if not url.path.endswith("/"):
+                    return self._gonder(301, basliklar={"Location": f"{parcalar[0]}/"})
+                return self._html(self._sekme_sayfasi(parcalar[0]))
+            if parcalar == ["api", "isler"]:
+                return self._json(200, {"html": arayuz.isler_listesi(isler.listele(self.veri, self.eposta))})
             if parcalar[0] != "k" or len(parcalar) < 2 or not _KITAP.match(parcalar[1]):
                 return self._gonder(404, "Bulunamadı.".encode())
-            k = next((x for x in kitaplar(self.veri) if x["kimlik"] == parcalar[1]), None)
+            k = next((x for x in kitaplar(self.kok) if x["kimlik"] == parcalar[1]), None)
             if k is None:
                 return self._gonder(404, "Kitap bulunamadı.".encode())
             if len(parcalar) == 2:
@@ -365,10 +405,100 @@ class Isleyici(BaseHTTPRequestHandler):
             log.exception("istek hatası: %s", self.path)
             return self._gonder(500, "Sunucu hatası.".encode())
 
+    def _sekme_sayfasi(self, ad: str) -> bytes:
+        kid = hesap.kid(self.eposta)
+        try:
+            kendi = gizli.anahtar_var(self.veri, kid)
+        except gizli.GizliHatasi:
+            kendi = False
+        if ad == "yukle":
+            govde = arayuz.yukle(self.kayit, isler.listele(self.veri, self.eposta),
+                                 isler.gemini_bugun(self.veri, self.eposta), kendi)
+            return _sayfa("Yükle", _sekmeler("yukle", "../", self.yonetici) + govde)
+        if ad == "ayarlar":
+            return _sayfa("Ayarlar", _sekmeler("ayarlar", "../", self.yonetici) + arayuz.ayarlar(self.eposta, self.kayit, kendi))
+        if not self.yonetici:
+            return _sayfa("Yönetim", '<div class="bos">Bu sayfa sadece yöneticiye açık.</div>')
+        return _sayfa("Yönetim", _sekmeler("yonetim", "../", True) + arayuz.yonetim(hesap.oku(self.veri), isler.listele(self.veri)))
 
-def sunucu(veri: Path = VERI, adres: str = ADRES, port: int = PORT) -> ThreadingHTTPServer:
-    isleyici = type("Isleyici", (Isleyici,), {"veri": veri})
-    return ThreadingHTTPServer((adres, port), isleyici)
+    # --- yazma uçları ---------------------------------------------------------------------------------------
+    def _govde_json(self) -> dict:
+        boyut = int(self.headers.get("Content-Length") or 0)
+        if boyut > 64 * 1024:
+            raise isler.IsHatasi("İstek çok büyük.")
+        try:
+            veri = json.loads(self.rfile.read(boyut) or b"{}")
+        except ValueError:
+            raise isler.IsHatasi("Geçersiz istek.") from None
+        if not isinstance(veri, dict):
+            raise isler.IsHatasi("Geçersiz istek.")
+        return veri
+
+    def do_POST(self):
+        url = urlsplit(self.path)
+        parcalar = [p for p in url.path.split("/") if p]
+        # Başka siteden gelen form/istek: özel başlık taşıyamaz (CORS ön kontrolüne izin verilmez), tarayıcı site
+        # bilgisini de gönderir. İkisinden biri tutmazsa reddedilir.
+        if self.headers.get("X-Libriopax") != "1" or \
+                (self.headers.get("Sec-Fetch-Site") or "same-origin") not in ("same-origin", "none"):
+            return self._json(403, {"hata": "İstek reddedildi."})
+        try:
+            eposta, kayit = self._kim()
+            if not hesap.onayli_mi(kayit):
+                return self._json(403, {"hata": "Hesap onaylı değil."})
+            self.eposta, self.kayit = eposta, kayit
+            if parcalar == ["api", "yukle"]:
+                q = parse_qs(url.query)
+                from urllib.parse import unquote
+                is_ = isler.yeni(self.veri, eposta, (q.get("tur") or [""])[0], unquote(self.headers.get("X-Dosya-Adi") or ""),
+                                 self.rfile, int(self.headers.get("Content-Length") or 0),
+                                 {"motor": (q.get("motor") or ["piper"])[0], "ses": (q.get("ses") or ["fahrettin"])[0]})
+                if self.isci:
+                    self.isci.uyandir()
+                return self._json(200, {"id": is_["id"], "durum": is_["durum"]})
+            if len(parcalar) == 4 and parcalar[:2] == ["api", "is"] and parcalar[3] == "iptal":
+                isler.iptal(self.veri, parcalar[2], eposta)
+                return self._json(200, {"tamam": True})
+            if parcalar == ["api", "anahtar"]:
+                gizli.anahtar_yaz(self.veri, hesap.kid(eposta), str(self._govde_json().get("anahtar") or ""))
+                return self._json(200, {"tamam": True})
+            if parcalar == ["api", "anahtar", "sil"]:
+                gizli.anahtar_sil(self.veri, hesap.kid(eposta))
+                return self._json(200, {"tamam": True})
+            if parcalar[:2] == ["api", "yonetim"]:
+                if not kayit.get("yonetici"):
+                    return self._json(403, {"hata": "Sadece yönetici."})
+                if len(parcalar) == 5 and parcalar[2] == "is" and parcalar[4] in ("onayla", "reddet"):
+                    isler.karar(self.veri, parcalar[3], parcalar[4] == "onayla")
+                    if self.isci:
+                        self.isci.uyandir()
+                    return self._json(200, {"tamam": True})
+                if parcalar[2:] == ["kullanici"]:
+                    g = self._govde_json()
+                    alanlar = {k: g[k] for k in ("durum", "motorlar", "gemini_gunluk", "otomatik_onay") if k in g}
+                    hesap.guncelle(self.veri, str(g.get("eposta") or ""), **alanlar)
+                    return self._json(200, {"tamam": True})
+            return self._json(404, {"hata": "Bulunamadı."})
+        except (isler.IsHatasi, hesap.HesapHatasi, gizli.GizliHatasi) as hata:
+            return self._json(400, {"hata": str(hata)})
+        except (ValueError, TypeError):
+            return self._json(400, {"hata": "Geçersiz istek."})
+        except (ConnectionAbortedError, ConnectionResetError, BrokenPipeError):
+            return
+        except Exception:
+            log.exception("istek hatası: POST %s", self.path)
+            return self._json(500, {"hata": "Sunucu hatası."})
+
+
+def sunucu(veri: Path = VERI, adres: str = ADRES, port: int = PORT, isci: bool = False,
+           isci_motor: str = None) -> ThreadingHTTPServer:
+    """isci=True: iş kuyruğu işçisini de başlatır (sunucu.isci). Testler işçisiz ya da sahte motorla çalışır."""
+    hesap.hazirla(veri)
+    calisan = isler.Isci(veri, motor=isci_motor).baslat() if isci else None
+    isleyici = type("Isleyici", (Isleyici,), {"veri": veri, "isci": calisan})
+    s = ThreadingHTTPServer((adres, port), isleyici)
+    s.isci = calisan
+    return s
 
 
 def main(argv=None) -> int:
@@ -381,7 +511,7 @@ def main(argv=None) -> int:
     logging.basicConfig(filename=VERI / "sunucu.log", level=logging.INFO, encoding="utf-8",
                         format="%(asctime)s %(levelname)s %(message)s")
     try:
-        s = sunucu(adres=a.adres, port=a.port)
+        s = sunucu(adres=a.adres, port=a.port, isci=True)
     except OSError:
         if sys.stderr:
             print(f"{a.adres}:{a.port} kullanımda — sunucu zaten çalışıyor olabilir.", file=sys.stderr)
